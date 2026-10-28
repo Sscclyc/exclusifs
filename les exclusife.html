@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>香水意境翻牌遊戲</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: #0a0a0a;
+            color: #ffffff;
+            font-family: 'Helvetica Neue', Helvetica, Arial, "Noto Sans TC", sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 10px;
+        }
+
+        h1 {
+            font-size: 1.6rem;
+            font-weight: 300;
+            letter-spacing: 4px;
+            margin-bottom: 25px;
+            text-transform: uppercase;
+            color: #e5c158;
+            text-align: center;
+        }
+
+        /* 強制鎖定為 3 × 3 九宮格 */
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            max-width: 750px;
+            width: 100%;
+        }
+
+        /* 卡牌基礎結構 */
+        .card {
+            aspect-ratio: 1 / 1;
+            perspective: 1000px;
+            cursor: pointer;
+        }
+
+        .card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            transform-style: preserve-3d;
+        }
+
+        /* 翻轉狀態 */
+        .card.is-flipped .card-inner {
+            transform: rotateY(180deg);
+        }
+
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden; /* ⚡ 關鍵：將超出卡牌範圍的白邊隱藏裁剪 */
+            border: 1px solid rgba(229, 193, 88, 0.25);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+            background-color: #0a0a0a; /* 底色一律純黑 */
+        }
+
+        /* ✨ 終極修正：強制放大圖片，將邊緣的白邊推出外框裁剪掉 */
+        .card-front {
+            width: 100%;
+            height: 100%;
+            background-position: center;
+            background-repeat: no-repeat;
+            /* ⚡ 關鍵微調：放大到 110% 左右（可以根據白邊粗細改成 105%~110%） */
+            background-size: 116% 116%; 
+        }
+
+        /* 卡牌背面 */
+        .card-back {
+            background-color: #ffffff;
+            color: #111111;
+            transform: rotateY(180deg);
+            padding: 10px;
+            border: 1px solid #e5c158;
+        }
+
+        /* 卡牌背面內襯金線 */
+        .card-back::before {
+            content: '';
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            right: 8px;
+            bottom: 8px;
+            border: 1px solid rgba(183, 138, 40, 0.15);
+            pointer-events: none;
+        }
+
+        .perfume-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+            color: #111111;
+            text-transform: uppercase;
+        }
+
+        .perfume-tone {
+            font-size: 0.8rem;
+            color: #666666;
+            margin-bottom: 12px;
+            letter-spacing: 1px;
+        }
+
+        .perfume-keyword {
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: #b78a28;
+            border-top: 1px solid #e5e5e5;
+            padding-top: 8px;
+            width: 80%;
+            letter-spacing: 4px;
+            text-indent: 4px;
+        }
+
+        /* 針對小螢幕手機微調字體 */
+        @media (max-width: 480px) {
+            .grid-container {
+                gap: 8px;
+            }
+            .perfume-name { font-size: 0.85rem; }
+            .perfume-tone { font-size: 0.65rem; margin-bottom: 6px; }
+            .perfume-keyword { font-size: 0.8rem; padding-top: 4px; }
+            h1 { font-size: 1.2rem; margin-bottom: 15px; }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>LES EXCLUSIFS DE CHANEL</h1>
+
+    <div class="grid-container" id="grid"></div>
+
+    <script>
+        const perfumes = [
+            { name: "草香花香調", tone: "輕鬆，平靜，柔和舒適", keyword: "秘密", img: "image_lYMDcm.png" },
+            { name: "木香調", tone: "沉穩安定、內斂平靜", keyword: "深度", img: "image_9aeZfG.png" },
+            { name: "草本調", tone: "自由自在、療癒放鬆", keyword: "從容", img: "image_Vc2-_b.png" },
+            { name: "柑橘調", tone: "無負擔、自然、陽光", keyword: "率性", img: "image_gjBlSc.png" },
+            { name: "花香調", tone: "純淨、高雅、和諧", keyword: "氣度", img: "image_x4PgdG.png" },
+            { name: "花香調", tone: "幸運、愉快、柔軟", keyword: "樂觀", img: "image_X2Wxiy.png" },
+            { name: "琥珀調", tone: "熱情、有目標感", keyword: "神秘", img: "image_yxvKBP.png" },
+            { name: "琥珀調", tone: "低調奢華、舒適安心", keyword: "影響", img: "image_Fd2c6E.png" },
+            { name: "草本調", tone: "享受自由、對生活有規劃", keyword: "獨立", img: "image_s_RqiL.png" }
+        ];
+
+        const grid = document.getElementById('grid');
+
+        perfumes.forEach((perfume) => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            
+            card.innerHTML = `
+                <div class="card-inner">
+                    <div class="card-face card-front" style="background-image: url('${perfume.img}');"></div>
+                    <div class="card-face card-back">
+                        <div class="perfume-name">${perfume.name}</div>
+                        <div class="perfume-tone">${perfume.tone}</div>
+                        <div class="perfume-keyword">${perfume.keyword}</div>
+                    </div>
+                </div>
+            `;
+
+            card.addEventListener('click', () => {
+                card.classList.toggle('is-flipped');
+            });
+
+            grid.appendChild(card);
+        });
+    </script>
+</body>
+</html>
